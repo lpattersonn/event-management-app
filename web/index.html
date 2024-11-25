@@ -31,6 +31,27 @@
 
   <title>event_management_app</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<!-- Add Firestore SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBygYHoVwlNnGabdCn6b-XXGadlUQGVYe0",
+    authDomain: "event-management-backend-7022a.firebaseapp.com",
+    projectId: "event-management-backend-7022a",
+    storageBucket: "event-management-backend-7022a.firebasestorage.app",
+    messagingSenderId: "900117377579",
+    appId: "1:900117377579:web:1504b0755faa0a2e95b06e",
+    measurementId: "G-Y8HNSMQT4K"
+  };
+  
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+</script>
+
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
