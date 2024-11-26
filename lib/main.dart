@@ -24,15 +24,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Event Management',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/',  // Set initial route as the event list screen
+      initialRoute: '/',  // Home route (Event List Screen)
       routes: {
-        '/': (context) => EventListScreen(), // Home route (Event List Screen)
-        '/eventDetail': (context) => EventDetailScreen(eventId: ''), // Placeholder for event details
-        '/createEditEvent': (context) => CreateEditEventScreen(), // Screen for creating/editing events
+        '/': (context) => EventListScreen(),
+        '/eventDetail': (context) => EventDetailScreen(eventId: ModalRoute.of(context)!.settings.arguments as String),
+        '/createEditEvent': (context) => CreateEditEventScreen(),
       },
     );
   }

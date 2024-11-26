@@ -22,7 +22,12 @@ class _EventListScreenState extends State<EventListScreen> {
     }
 
     return query.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+      return snapshot.docs.map((doc) {
+        // Get document data and also capture the document ID
+        var data = doc.data() as Map<String, dynamic>;
+        data['id'] = doc.id; // Add the document ID to the data map
+        return data;
+      }).toList();
     });
   }
 
@@ -30,7 +35,7 @@ class _EventListScreenState extends State<EventListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Events'),
+        title: Text('Event Management App'),
         actions: [
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -77,7 +82,7 @@ class _EventListScreenState extends State<EventListScreen> {
               final date = (event['date'] as Timestamp).toDate();
               final location = event['location'];
               final organizer = event['organizer'];
-              final eventId = event['id'];
+              final eventId = event['id']; // Now 'id' is part of the data map
 
               return Card(
                 margin: EdgeInsets.all(8.0),
@@ -86,6 +91,7 @@ class _EventListScreenState extends State<EventListScreen> {
                   subtitle: Text('$description\n$location\n$organizer'),
                   trailing: Text('${date.toLocal()}'),
                   onTap: () {
+                    // Navigate to EventDetailScreen with the eventId
                     Navigator.push(
                       context,
                       MaterialPageRoute(

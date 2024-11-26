@@ -5,7 +5,8 @@ import 'create_edit_event_screen.dart';
 class EventDetailScreen extends StatefulWidget {
   final String eventId;
 
-  EventDetailScreen({required this.eventId});
+  // Constructor for EventDetailScreen
+  EventDetailScreen({Key? key, required this.eventId}) : super(key: key);
 
   @override
   _EventDetailScreenState createState() => _EventDetailScreenState();
@@ -20,6 +21,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     eventRef = FirebaseFirestore.instance.collection('events').doc(widget.eventId);
   }
 
+  // Delete event function
   Future<void> deleteEvent() async {
     try {
       await eventRef.delete();
@@ -80,6 +82,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   children: [
                     ElevatedButton(
                       onPressed: () {
+                        // Navigate to Create/Edit Event screen
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -89,11 +92,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       },
                       child: Text('Edit'),
                     ),
-                     ElevatedButton(
+                    ElevatedButton(
                       onPressed: deleteEvent,
                       child: Text('Delete'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,  // Correct way to set the background color
+                        backgroundColor: Colors.red,
                       ),
                     ),
                   ],
