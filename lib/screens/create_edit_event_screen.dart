@@ -1,7 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../event_provider.dart'; // Make sure to import the EventProvider
+import 'package:intl/intl.dart';
+import '../event_provider.dart'; // Import the EventProvider
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'event_list_screen.dart';  // Import the event list screen
 
 class CreateEditEventScreen extends StatefulWidget {
   final String? eventId;
@@ -21,73 +24,46 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
   final _eventTypeController = TextEditingController();
   final _dateController = TextEditingController();
 
-  late DocumentReference eventRef;
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.eventId != null) {
-      eventRef = FirebaseFirestore.instance.collection('events').doc(widget.eventId);
-      _loadEventData();
-    }
-  }
+  List<String> eventTypes = ['All', 'Conference', 'Workshop', 'Webinar'];
+  String? _selectedEventType;
 
   // Load data if editing an existing event
   void _loadEventData() async {
-    try {
+    if (widget.eventId != null) {
       setState(() {
         _isLoading = true;
       });
-      DocumentSnapshot snapshot = await eventRef.get();
-      if (snapshot.exists) {
-        Map<String, dynamic> event = snapshot.data() as Map<String, dynamic>;
-        _titleController.text = event['title'];
-        _descriptionController.text = event['description'];
-        _locationController.text = event['location'];
-        _organizerController.text = event['organizer'];
-        _eventTypeController.text = event['eventType'];
-        _dateController.text = (event['date'] as Timestamp).toDate().toString().split(' ')[0]; // Formatting date to 'yyyy-mm-dd'
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading event data: $e')));
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  // Save event to Firestore
-  Future<void> _saveEvent() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      final event = {
-        'title': _titleController.text,
-        'description': _descriptionController.text,
-        'location': _locationController.text,
-        'organizer': _organizerController.text,
-        'eventType': _eventTypeController.text,
-        'date': Timestamp.fromDate(DateTime.parse(_dateController.text)),
-        'updatedAt': Timestamp.now(),
-      };
 
       try {
-        if (widget.eventId == null) {
-          // Create a new event
-          await Provider.of<EventProvider>(context, listen: false).addEvent(event);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Event created successfully!')));
+        final response = await http.get(
+          Uri.parse('https://us-central1-event-management-backend-7022a.cloudfunctions.net/api/getEventById/${widget.eventId}'),
+        );
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> eventData = json.decode(response.body);
+
+          if (eventData != null && eventData is Map<String, dynamic>) {
+            _titleController.text = eventData['title'] ?? '';
+            _descriptionController.text = eventData['description'] ?? '';
+            _locationController.text = eventData['location'] ?? '';
+            _organizerController.text = eventData['organizer'] ?? '';
+            _selectedEventType = eventData['eventType'] ?? eventTypes[0]; // Default to 'All' if not provided
+
+            // Parse the date safely, defaulting to the current date if invalid
+            try {
+              _dateController.text = DateFormat('yyyy-MM-dd').format(DateTime.parse(eventData['date']));
+            } catch (e) {
+              _dateController.text = DateFormat('yyyy-MM-dd').format(DateTime.now()); // Default to current date if parsing fails
+            }
+          } else {
+            throw Exception("Unexpected response format");
+          }
         } else {
-          // Update existing event
-          await Provider.of<EventProvider>(context, listen: false).updateEvent(widget.eventId!, event);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Event updated successfully!')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load event data')));
         }
-        Navigator.pop(context); // Go back to the previous screen after saving
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving event: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading event data: $e')));
       } finally {
         setState(() {
           _isLoading = false;
@@ -97,13 +73,113 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _selectedEventType = eventTypes[0]; // Default to 'All' if not loaded
+    if (widget.eventId != null) {
+      _loadEventData(); // Load event data if editing
+    }
+  }
+
+  // Show date picker and set the selected date
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime initialDate = _dateController.text.isEmpty
+        ? DateTime.now()
+        : DateTime.parse(_dateController.text);
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (pickedDate != null && pickedDate != initialDate) {
+      setState(() {
+        _dateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+      });
+    }
+  }
+
+  // Save event to Cloud Function or Firestore using EventProvider
+Future<void> _saveEvent() async {
+  if (_formKey.currentState!.validate()) {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final event = {
+      'title': _titleController.text,
+      'description': _descriptionController.text,
+      'location': _locationController.text,
+      'organizer': _organizerController.text,
+      'eventType': _selectedEventType!,
+      'date': _dateController.text,
+    };
+
+    try {
+      if (widget.eventId == null) {
+        // Create a new event
+        final response = await http.post(
+          Uri.parse('https://us-central1-event-management-backend-7022a.cloudfunctions.net/api/createEvent'),
+          body: json.encode(event),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final newEvent = json.decode(response.body);
+
+          // Update provider with the new event
+          Provider.of<EventProvider>(context, listen: false).addEvent(newEvent);
+
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Event created successfully!')));
+
+          // Navigate to Event List screen after event creation
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => EventListScreen()), // Replaces current screen with the EventListScreen
+          );
+        } else {
+          final errorResponse = json.decode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to create event: ${errorResponse['message']}')));
+        }
+      } else {
+        // Update existing event
+        final response = await http.put(
+          Uri.parse('https://us-central1-event-management-backend-7022a.cloudfunctions.net/api/updateEvent/${widget.eventId}'),
+          body: json.encode(event),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          // Update provider with the new event data
+          Provider.of<EventProvider>(context, listen: false).updateEvent(widget.eventId!, event);
+
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Event updated successfully!')));
+        } else {
+          final errorResponse = json.decode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update event: ${errorResponse['message']}')));
+        }
+      }
+
+      Navigator.pop(context); // Go back after saving (to the list screen)
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving event: $e')));
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+}
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.eventId == null ? 'Create Event' : 'Edit Event'),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator()) // Show a loading spinner while saving
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Form(
@@ -154,22 +230,35 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
                         return null;
                       },
                     ),
-                    // Event Type Field
-                    TextFormField(
-                      controller: _eventTypeController,
+                    // Event Type Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _selectedEventType,
                       decoration: InputDecoration(labelText: 'Event Type'),
+                      onChanged: (newValue) {
+                        setState(() {
+                          _selectedEventType = newValue!;
+                        });
+                      },
+                      items: eventTypes.map((eventType) {
+                        return DropdownMenuItem<String>(
+                          value: eventType,
+                          child: Text(eventType),
+                        );
+                      }).toList(),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter an event type';
+                          return 'Please select an event type';
                         }
                         return null;
                       },
                     ),
-                    // Event Date Field
+                    // Event Date Field with Date Picker
                     TextFormField(
                       controller: _dateController,
                       decoration: InputDecoration(labelText: 'Event Date (yyyy-mm-dd)'),
                       keyboardType: TextInputType.datetime,
+                      readOnly: true,
+                      onTap: () => _selectDate(context),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a date';
