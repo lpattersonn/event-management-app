@@ -1,5 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Import provider package
+import 'event_provider.dart'; // Import the event provider
 import 'screens/event_list_screen.dart';
 import 'screens/event_detail_screen.dart';
 import 'screens/create_edit_event_screen.dart';
@@ -17,24 +19,28 @@ void main() async {
       measurementId: "G-Y8HNSMQT4K",
     ),
   );
+  
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Event Management',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return ChangeNotifierProvider(
+      create: (_) => EventProvider(), // Provide the EventProvider to the widget tree
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Event Management',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        initialRoute: '/', // Home route (Event List Screen)
+        routes: {
+          '/': (context) => EventListScreen(),
+          '/eventDetail': (context) => EventDetailScreen(eventId: ModalRoute.of(context)!.settings.arguments as String),
+          '/createEditEvent': (context) => CreateEditEventScreen(),
+        },
       ),
-      initialRoute: '/',  // Home route (Event List Screen)
-      routes: {
-        '/': (context) => EventListScreen(),
-        '/eventDetail': (context) => EventDetailScreen(eventId: ModalRoute.of(context)!.settings.arguments as String),
-        '/createEditEvent': (context) => CreateEditEventScreen(),
-      },
     );
   }
 }

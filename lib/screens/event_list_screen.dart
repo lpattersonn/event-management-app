@@ -1,39 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Import provider package
+import 'package:intl/intl.dart'; // Import the intl package for date formatting
+import '../event_provider.dart'; // Import the event provider
 import 'event_detail_screen.dart';
 import 'create_edit_event_screen.dart'; // Import the screen where new events are created
 
-class EventListScreen extends StatefulWidget {
-  @override
-  _EventListScreenState createState() => _EventListScreenState();
-}
-
-class _EventListScreenState extends State<EventListScreen> {
-  String _selectedEventType = 'All'; // Default to 'All'
-  final List<String> eventTypes = ['All', 'Conference', 'Workshop', 'Webinar'];
-
-  // Reference to Firestore collection
-  final CollectionReference eventsCollection = FirebaseFirestore.instance.collection('events');
-
-  // Function to fetch events from Firestore with real-time updates
-  Stream<List<Map<String, dynamic>>> getEvents(String eventType) {
-    Query query = eventsCollection.orderBy('date', descending: true);
-    if (eventType != 'All') {
-      query = query.where('eventType', isEqualTo: eventType);
-    }
-
-    return query.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        // Get document data and also capture the document ID
-        var data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id; // Add the document ID to the data map
-        return data;
-      }).toList();
-    });
-  }
-
+class EventListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final eventProvider = Provider.of<EventProvider>(context); // Access EventProvider
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Event Management App'),
@@ -48,20 +25,21 @@ class _EventListScreenState extends State<EventListScreen> {
               child: Container(
                 width: 200, // Set the width of the dropdown to 200px
                 child: DropdownButton<String>(
-                  value: _selectedEventType,
+                  value: eventProvider.selectedEventType,
                   onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedEventType = newValue!;
-                    });
+                    // Update selected event type in the provider
+                    if (newValue != null) {
+                      eventProvider.setEventType(newValue);
+                    }
                   },
-                  isExpanded: true, // Make it expand to full width of the container
+                  isExpanded: true,
                   dropdownColor: Colors.white, // Set the dropdown's background color
                   style: TextStyle(color: Colors.black, fontSize: 16), // Text style for dropdown button
                   underline: Container(
                     height: 2,
-                    color: Colors.blue, // Add an underline like Bootstrap dropdown
+                    color: Colors.blue, 
                   ),
-                  items: eventTypes.map<DropdownMenuItem<String>>((String value) {
+                  items: eventProvider.eventTypes.map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Padding(
@@ -78,7 +56,7 @@ class _EventListScreenState extends State<EventListScreen> {
           // Event list displayed below the centered dropdown
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: getEvents(_selectedEventType),
+              stream: eventProvider.getEvents(), // Get events stream from provider
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
@@ -100,17 +78,20 @@ class _EventListScreenState extends State<EventListScreen> {
                     final event = events[index];
                     final title = event['title'];
                     final description = event['description'];
-                    final date = (event['date'] as Timestamp).toDate();
+                    final date = (event['date'] as Timestamp).toDate(); // Timestamp to Date
                     final location = event['location'];
                     final organizer = event['organizer'];
                     final eventId = event['id']; // Now 'id' is part of the data map
+
+                    // Format the date using intl package without time
+                    String formattedDate = DateFormat('MMMM dd, yyyy').format(date);
 
                     return Card(
                       margin: EdgeInsets.all(8.0),
                       child: ListTile(
                         title: Text(title),
                         subtitle: Text('$description\n$location\n$organizer'),
-                        trailing: Text('${date.toLocal()}'),
+                        trailing: Text(formattedDate), // Display human-readable date without time
                         onTap: () {
                           // Navigate to EventDetailScreen with the eventId
                           Navigator.push(

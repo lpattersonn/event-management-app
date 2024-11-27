@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Import provider package
+import 'package:intl/intl.dart'; // Import intl for date formatting
 import 'create_edit_event_screen.dart';
+import '../event_provider.dart'; // Import your EventProvider
 
 class EventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -22,9 +25,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   // Delete event function
-  Future<void> deleteEvent() async {
+  Future<void> deleteEvent(EventProvider eventProvider) async {
     try {
       await eventRef.delete();
+      eventProvider.removeEvent(widget.eventId); // Remove event from provider list
       Navigator.pop(context); // Go back after deletion
     } catch (e) {
       print("Error deleting event: $e");
@@ -33,6 +37,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final eventProvider = Provider.of<EventProvider>(context); // Access EventProvider
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Event Details'),
@@ -55,10 +61,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           final event = snapshot.data!.data() as Map<String, dynamic>;
           final title = event['title'];
           final description = event['description'];
-          final date = (event['date'] as Timestamp).toDate();
+          final date = (event['date'] as Timestamp).toDate(); // Convert Firestore Timestamp to DateTime
           final location = event['location'];
           final organizer = event['organizer'];
           final eventType = event['eventType'];
+
+          // Format the date using the intl package (without time)
+          String formattedDate = DateFormat('MMMM dd, yyyy').format(date);
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
@@ -75,7 +84,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 SizedBox(height: 10),
                 Text('Event Type: $eventType'),
                 SizedBox(height: 10),
-                Text('Date: ${date.toLocal()}'),
+                Text('Date: $formattedDate'), // Display the formatted date
                 SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -93,10 +102,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       child: Text('Edit'),
                     ),
                     ElevatedButton(
-                      onPressed: deleteEvent,
+                      onPressed: () {
+                        deleteEvent(eventProvider); // Delete the event using the provider
+                      },
                       child: Text('Delete'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
                       ),
                     ),
                   ],

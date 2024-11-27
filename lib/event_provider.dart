@@ -1,73 +1,99 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class EventProvider with ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String _selectedEventType = 'All'; // Default to 'All'
+  List<String> eventTypes = ['All', 'Conference', 'Workshop', 'Webinar'];
 
-  // List of events
   List<Map<String, dynamic>> _events = [];
+  String? _errorMessage;
+
+  // Getter for events
   List<Map<String, dynamic>> get events => _events;
 
-  // Current user
-  User? _user;
-  User? get user => _user;
+  // Getter for selected event type
+  String get selectedEventType => _selectedEventType;
 
-  EventProvider() {
-    // Listen to changes in authentication state
-    _auth.authStateChanges().listen((User? user) {
-      _user = user;
-      notifyListeners();
+  // Getter for error message
+  String? get errorMessage => _errorMessage;
+
+  // Set a new event type and notify listeners
+  void setEventType(String type) {
+    _selectedEventType = type;
+    notifyListeners(); // Notify listeners to rebuild UI
+  }
+
+  // Reference to Firestore collection
+  final CollectionReference eventsCollection = FirebaseFirestore.instance.collection('events');
+
+  // Function to fetch events from Firestore with real-time updates
+  Stream<List<Map<String, dynamic>>> getEvents() {
+    Query query = eventsCollection.orderBy('date', descending: true);
+    if (_selectedEventType != 'All') {
+      query = query.where('eventType', isEqualTo: _selectedEventType);
+    }
+
+    return query.snapshots().map((snapshot) {
+      _events = snapshot.docs.map((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        data['id'] = doc.id; // Add the document ID to the data map
+        return data;
+      }).toList();
+
+      return _events;
     });
   }
 
-  // Fetch events from Firestore
-  Future<void> fetchEvents() async {
+  // Add a new event to Firestore
+  Future<void> addEvent(Map<String, dynamic> eventData) async {
     try {
-      QuerySnapshot snapshot = await _firestore.collection('events').get();
-      _events = snapshot.docs
-          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-          .toList();
+      // Add new event to Firestore
+      DocumentReference docRef = await eventsCollection.add(eventData);
+      eventData['id'] = docRef.id; // Add the document ID to the event data
+      _events.insert(0, eventData); // Add event to the list in provider
+      notifyListeners(); // Notify listeners to update UI
+    } catch (e) {
+      _errorMessage = "Error adding event: $e";
       notifyListeners();
-    } catch (e) {
-      print('Error fetching events: $e');
+      throw Exception(_errorMessage);
     }
   }
 
-  // Create or update an event
-  Future<void> saveEvent(String? eventId, Map<String, dynamic> eventData) async {
+  // Update an existing event in Firestore
+  Future<void> updateEvent(String eventId, Map<String, dynamic> updatedData) async {
     try {
-      if (eventId == null) {
-        // Add new event
-        await _firestore.collection('events').add(eventData);
-      } else {
-        // Update existing event
-        await _firestore.collection('events').doc(eventId).update(eventData);
+      // Update event in Firestore
+      await eventsCollection.doc(eventId).update(updatedData);
+      // Update the local list of events
+      int index = _events.indexWhere((event) => event['id'] == eventId);
+      if (index != -1) {
+        _events[index] = {..._events[index], ...updatedData}; // Merge updated data
+        notifyListeners(); // Notify listeners to update UI
       }
-      await fetchEvents(); // Refresh the list after saving
     } catch (e) {
-      print('Error saving event: $e');
+      _errorMessage = "Error updating event: $e";
+      notifyListeners();
+      throw Exception(_errorMessage);
     }
   }
 
-  // Delete an event
+  // Remove event from the list
+  void removeEvent(String eventId) {
+    _events.removeWhere((event) => event['id'] == eventId);
+    notifyListeners(); // Notify listeners to update UI
+  }
+
+  // Delete event from Firestore
   Future<void> deleteEvent(String eventId) async {
     try {
-      await _firestore.collection('events').doc(eventId).delete();
-      await fetchEvents(); // Refresh the list after deleting
+      // Remove event from Firestore
+      await eventsCollection.doc(eventId).delete();
+      // Remove event from local list
+      removeEvent(eventId); // Reuse the removeEvent function
     } catch (e) {
-      print('Error deleting event: $e');
+      _errorMessage = "Error deleting event: $e";
+      notifyListeners();
+      throw Exception(_errorMessage);
     }
-  }
-
-  // Sign out
-  Future<void> signOut() async {
-    await _auth.signOut();
-  }
-
-  // Sign in anonymously (or use another sign-in method)
-  Future<void> signIn() async {
-    await _auth.signInAnonymously();
   }
 }
