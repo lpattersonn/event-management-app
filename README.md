@@ -174,3 +174,4 @@ Deploy the Flutter app to the Google Play Store or Apple App Store.
 License
 This project is licensed under the MIT License. See the LICENSE file for details.
 
+# event-management-app
