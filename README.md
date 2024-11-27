@@ -30,7 +30,7 @@ Android Studio or VS Code with Flutter and Dart plugins
 Firebase Project linked to your app
 Setup Instructions
 1. Clone the Repository
-git clone https://github.com/your-username/event-management-frontend.git
+git clone https://github.com/lpattersonn/event-management-frontend.git
 cd event-management-frontend
 2. Install Dependencies
 Run the following command to install the necessary dependencies for the Flutter app:
