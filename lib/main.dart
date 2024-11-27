@@ -1,25 +1,31 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Import provider package
-import 'event_provider.dart'; // Import the event provider
+import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // Import flutter_dotenv
+import 'event_provider.dart';
 import 'screens/event_list_screen.dart';
 import 'screens/event_detail_screen.dart';
 import 'screens/create_edit_event_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables from .env file
+  await dotenv.load();
+
+  // Initialize Firebase with values from .env
   await Firebase.initializeApp(
     options: FirebaseOptions(
-      apiKey: "AIzaSyBygYHoVwlNnGabdCn6b-XXGadlUQGVYe0",
-      authDomain: "event-management-backend-7022a.firebaseapp.com",
-      projectId: "event-management-backend-7022a",
-      storageBucket: "event-management-backend-7022a.firebasestorage.app",
-      messagingSenderId: "900117377579",
-      appId: "1:900117377579:web:1504b0755faa0a2e95b06e",
-      measurementId: "G-Y8HNSMQT4K",
+      apiKey: dotenv.env['API_KEY']!,
+      authDomain: dotenv.env['AUTH_DOMAIN']!,
+      projectId: dotenv.env['PROJECT_ID']!,
+      storageBucket: dotenv.env['STORAGE_BUCKET']!,
+      messagingSenderId: dotenv.env['MESSAGING_SENDER_ID']!,
+      appId: dotenv.env['APP_ID']!,
+      measurementId: dotenv.env['MEASUREMENT_ID']!,
     ),
   );
-  
+
   runApp(MyApp());
 }
 
