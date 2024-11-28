@@ -30,12 +30,13 @@ Android Studio or VS Code with Flutter and Dart plugins
 Firebase Project linked to your app
 Setup Instructions
 1. Clone the Repository
-git clone https://github.com/lpattersonn/event-management-app
+```git clone https://github.com/lpattersonn/event-management-app```
 cd event-management-frontend
 2. Install Dependencies
 Run the following command to install the necessary dependencies for the Flutter app:
-
+```
 flutter pub get
+```
 3. Firebase Setup
 You need to integrate your Flutter app with Firebase. Follow the steps below to set up Firebase in your Flutter project:
 
@@ -150,11 +151,13 @@ try {
 }
 9. Running the App
 To run the app on your emulator or physical device:
-
+```
 flutter run
+```
 Make sure to use flutter doctor to check if everything is set up correctly and there are no issues with your environment.
 
-Folder Structure
+## Folder Structure
+```
 /event-management-frontend
 ├── /lib
 │   ├── /models            # Event data models
@@ -166,7 +169,8 @@ Folder Structure
 ├── /ios                   # iOS-specific code
 ├── pubspec.yaml           # Flutter project dependencies
 └── README.md              # Project documentation
-Next Steps
+```
+## Next Steps
 Integrate user authentication (if needed) using Firebase Authentication.
 Enhance the UI for better user experience (UX/UI improvements).
 Set up production Firebase Firestore security rules.
