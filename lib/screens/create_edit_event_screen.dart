@@ -104,7 +104,7 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
 Future<void> _saveEvent() async {
   if (_formKey.currentState!.validate()) {
     setState(() {
-      _isLoading = true;  // Show the loading spinner
+      _isLoading = true;
     });
 
     final event = {
@@ -119,7 +119,7 @@ Future<void> _saveEvent() async {
 
     try {
       if (widget.eventId == null) {
-        // Disable the submit button to prevent multiple submissions
+        // Disable button while submitting
         setState(() {
           _isLoading = true;
         });
@@ -172,7 +172,7 @@ Future<void> _saveEvent() async {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving event: $e')));
     } finally {
       setState(() {
-        _isLoading = false; // Re-enable button when request is complete
+        _isLoading = false;
       });
     }
   }
