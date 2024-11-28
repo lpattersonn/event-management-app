@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 import 'dart:convert'; // For JSON parsing
+
+final _uuid = Uuid();
 
 class EventProvider with ChangeNotifier {
   String _selectedEventType = 'All'; // Default to 'All'
@@ -63,48 +66,49 @@ class EventProvider with ChangeNotifier {
   }
 
   // Add a new event via Firebase Cloud Function
-Future<void> addEvent(Map<String, dynamic> eventData) async {
-  try {
-    // Optimistically add the event to the local list
-    _events.insert(0, eventData);  // Insert at the beginning of the list
-    notifyListeners();  // Notify listeners to immediately reflect the change
+  Future<void> addEvent(Map<String, dynamic> eventData) async {
+    try {
+      // Add a unique request ID to the event data
+      final requestId = _uuid.v4();
+      eventData['requestId'] = requestId;
 
-    final response = await http.post(
-      Uri.parse('$_baseUrl/createEvent'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(eventData),
-    );
-
-    if (response.statusCode == 201) {  // Check for '201 Created' status code
-      // Successfully added event
-      var newEvent = json.decode(response.body);
-      
-      // Ensure the new event is inserted correctly
-      int index = _events.indexWhere((event) => event['id'] == newEvent['id']);
-      if (index != -1) {
-        _events[index] = newEvent;  // Update the event with the response from server
-      } else {
-        // If index is not found, add the new event to the list
-        _events.insert(0, newEvent);
+      // Check if the event already exists based on the unique requestId
+      if (_events.any((event) => event['requestId'] == requestId)) {
+        print('Duplicate event request detected: $requestId');
+        return; // Prevent duplicate addition
       }
-      notifyListeners();  // Notify listeners that the event list has been updated
-    } else {
-      // Failed to add event, revert optimistic update
-      _errorMessage = 'Failed to add event: ${response.statusCode}';
-      _events.removeAt(0);  // Revert the optimistic update
+
+      // Optimistically add the event to the local list
+      _events.insert(0, eventData);  
+      notifyListeners();
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/createEvent'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(eventData),
+      );
+
+      if (response.statusCode == 201) {
+        var newEvent = json.decode(response.body);
+
+        // Replace the optimistic event with the server response
+        int index = _events.indexWhere((event) => event['requestId'] == requestId);
+        if (index != -1) {
+          _events[index] = newEvent;
+        } else {
+          _events.insert(0, newEvent);
+        }
+        notifyListeners();
+      } else {
+        throw Exception('Failed to add event: ${response.statusCode}');
+      }
+    } catch (e) {
+      _errorMessage = 'Error adding event: $e';
+      // Revert optimistic addition
+      _events.removeWhere((event) => event['requestId'] == eventData['requestId']);
       notifyListeners();
     }
-  } catch (e) {
-    // Handle errors during the add event request
-    _errorMessage = 'Error adding event: $e';
-    _events.removeAt(0);  // Revert the optimistic update
-    notifyListeners();
-  } finally {
-    // Notify listeners to reflect the final state
-    notifyListeners();
   }
-}
-
 
   // Update an existing event via Firebase Cloud Function
   Future<void> updateEvent(String eventId, Map<String, dynamic> updatedData) async {

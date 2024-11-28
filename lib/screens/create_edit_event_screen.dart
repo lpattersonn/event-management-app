@@ -104,7 +104,7 @@ class _CreateEditEventScreenState extends State<CreateEditEventScreen> {
 Future<void> _saveEvent() async {
   if (_formKey.currentState!.validate()) {
     setState(() {
-      _isLoading = true;
+      _isLoading = true;  // Show the loading spinner
     });
 
     final event = {
@@ -114,10 +114,16 @@ Future<void> _saveEvent() async {
       'organizer': _organizerController.text,
       'eventType': _selectedEventType!,
       'date': _dateController.text,
+      'requestId': DateTime.now().millisecondsSinceEpoch.toString(),  // Unique requestId based on timestamp
     };
 
     try {
       if (widget.eventId == null) {
+        // Disable the submit button to prevent multiple submissions
+        setState(() {
+          _isLoading = true;
+        });
+
         // Create a new event
         final response = await http.post(
           Uri.parse('https://us-central1-event-management-backend-7022a.cloudfunctions.net/api/createEvent'),
@@ -166,7 +172,7 @@ Future<void> _saveEvent() async {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving event: $e')));
     } finally {
       setState(() {
-        _isLoading = false;
+        _isLoading = false; // Re-enable button when request is complete
       });
     }
   }
